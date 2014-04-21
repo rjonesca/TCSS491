@@ -185,6 +185,11 @@ GameEngine.prototype.startInput = function () {
         that.key = e;
     }, false);
 
+    this.ctx.canvas.addEventListener("keyup", function (e) {
+        e.preventDefault();
+        that.key = null;
+    }, false);
+
     console.log('Input started');
 }
 
@@ -230,7 +235,7 @@ GameEngine.prototype.loop = function () {
     this.draw();
     this.click = null;
     this.wheel = null;
-    this.key = null;
+   // this.key = null;
 }
 
 function Entity(game, x, y) {
@@ -277,7 +282,8 @@ function Mario(init_x, init_y, game) {
     this.steps = 0;
     this.sprite = ASSET_MANAGER.getAsset('images/smb3_mario_sheet.png');
      this.animation = new Animation(this.sprite, 200, 80, 40, 40, 0.1, 1, false, false);
-     this.walkAnimation = new Animation(this.sprite, 200, 80, 40, 40, .7, 2, true, false);
+     this.walkAnimation = new Animation(this.sprite, 200, 80, 40, 40, .1, 2, false, false);
+     this.runAnimation = new Animation(this.sprite, 200, 160, 40, 40, .06, 2, false, false)
      Entity.call(this, game, init_x, init_y);
 }
 
@@ -285,27 +291,61 @@ Mario.prototype = new Entity();
 Mario.prototype.constructor = Mario;
 
 Mario.prototype.update = function() {
+   
+     
     if (this.game.key) {
+        console.log('key');
         if (this.game.key.keyCode === 39) {
             console.log('39');
-            this.isWalking =true;
+            if (this.isRunning && this.runAnimation.isDone()) {
+                this.runAnimation.elapsedTime = 0;
+                this.x += 15;
+            }
+            if (this.isWalking && this.walkAnimation.isDone()) {
+                this.walkAnimation.elapsedTime = 0;
+                this.x +=5;
+            }
+            if (!this.isWalking && !this.isRunning)
+                this.isWalking =true;
+           
             this.steps++;
-            if (this.steps > 5) {
+            if (this.steps > 90 && !this.isRunning) {
                 this.isRunning = true;
+                this.isWalking = false;
+                this.walkAnimation.elapsedTime = 0;
             }
         } else {
-            //console.log('else');
-            this.isWalking = false;
+
+             if (this.walkAnimation.isDone()) {
+                console.log('walking done');
+                this.isWalking = false;
+                this.walkAnimation.elapsedTime = 0;
+                 this.x += 5;
+            }
+            if (this.runAnimation.isDone()) {
+                this.isRunning = false;
+                this.runAnimation.elapsedTime = 0;
+                 this.x += 5;
+
+            }
+            this.steps = 0;
         }
-    } else {
-        if (this.isWalking) {
-            //console.log(this.walkAnimation.isDone());
-        } else {
-            //console.log('Stop');
-            this.isRunning = false;
-            this.isWalking = false;
-            this.steps= 0;
-        }
+    } else  {
+        //console.log("key up");
+            if (this.walkAnimation.isDone()) {
+                this.isWalking = false;
+                this.walkAnimation.elapsedTime = 0;
+                this.steps = 0;
+                this.x += 5;
+            }
+            if (this.runAnimation.isDone()) {
+                this.isRunning = false;
+                this.runAnimation.elapsedTime = 0;
+                this.steps = 0;
+                this.x += 15;
+
+            }
+            
     }
 }
 
@@ -316,13 +356,18 @@ Mario.prototype.draw = function(ctx) {
     ctx.strokeRect(this.x + 13, this.y + 7, 20, 20);
     ctx.strokeStyle = style;
     //ctx.drawImage(this.sprite, this.x, this.y, 40, 40);
-    if (this.isWalking) {
-        this.walkAnimation.drawFrame(this.game.clockTick, ctx, this.x, this.y, 1.5);
-    } else if (this.isRunning) {
+    if (this.isRunning) {
         this.runAnimation.drawFrame(this.game.clockTick, ctx, this.x, this.y, 1.5);
+    
+    } else if (this.isWalking) {
+        this.walkAnimation.drawFrame(this.game.clockTick, ctx, this.x, this.y, 1.5);
     } else {
-        this.animation.drawFrame(this.game.clockTick, ctx, this.x, this.y, 1.5);
-        this.animation.elapsedTime = 0;
+        ctx.drawImage(this.sprite,
+                  200, 80,  // source from sheet
+                  40, 40,
+                  this.x, this.y,
+                  40* 1.5,
+                  40 * 1.5);
     }
     // if (this.runAnimation.isDone()) {
     //     console.log('here');
